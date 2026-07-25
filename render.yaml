@@ -1,0 +1,30 @@
+services:
+  - type: web
+    name: url-shortener-service
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: python wsgi.py
+    envVars:
+      - key: USE_POSTGRES
+        value: "true"
+      - key: POSTGRES_HOST
+        fromDatabase:
+          name: url-shortener-db
+          property: host
+      - key: POSTGRES_USER
+        fromDatabase:
+          name: url-shortener-db
+          property: user
+      - key: POSTGRES_PASSWORD
+        fromDatabase:
+          name: url-shortener-db
+          property: password
+      - key: POSTGRES_DB
+        fromDatabase:
+          name: url-shortener-db
+          property: database
+
+databases:
+  - name: url-shortener-db
+    databaseName: url_shortener_db
+    user: postgres
