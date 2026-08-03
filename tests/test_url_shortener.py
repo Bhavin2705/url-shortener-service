@@ -8,6 +8,7 @@ from sqlalchemy.pool import StaticPool
 def client():
     app = create_app({
         "TESTING": True,
+        "ADMIN_USERNAME": "adminuser",
         "SQLALCHEMY_DATABASE_URI": "sqlite://",
         "RATELIMIT_ENABLED": False,
         "SQLALCHEMY_ENGINE_OPTIONS": {
@@ -15,6 +16,7 @@ def client():
             "poolclass": StaticPool
         }
     })
+
     with app.test_client() as client:
         with app.app_context():
             db.create_all()

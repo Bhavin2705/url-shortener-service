@@ -170,8 +170,13 @@ def create_app(test_config=None):
             return jsonify({"success": False, "error": "Username already exists"}), 409
         user = User(username=username)
         user.set_password(password)
-        if User.query.count() == 0:
+        admin_env = (app.config.get("ADMIN_USERNAME") or Config.ADMIN_USERNAME or "").lower()
+        if admin_env and username.lower() == admin_env:
             user.is_admin = True
+        else:
+            user.is_admin = False
+
+
         db.session.add(user)
         db.session.commit()
         session["user_id"] = user.id

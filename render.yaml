@@ -9,8 +9,11 @@ services:
     envVars:
       - key: PYTHON_VERSION
         value: "3.11.8"
+      - key: ADMIN_USERNAME
+        value: "bhavin2705"
       - key: USE_POSTGRES
         value: "true"
+
 
       - key: DATABASE_URL
         value: "postgresql://postgres.rewgyulmkgijvxnvpcjm:Bhavin%402005%23@aws-1-ap-south-1.pooler.supabase.com:6543/postgres"

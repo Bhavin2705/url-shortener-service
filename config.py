@@ -11,6 +11,8 @@ class Config:
     SESSION_COOKIE_HTTPONLY = True
     SESSION_COOKIE_SAMESITE = "Lax"
     SESSION_COOKIE_SECURE = os.environ.get("SESSION_COOKIE_SECURE", "false").lower() in ["true", "1"]
+    ADMIN_USERNAME = os.environ.get("ADMIN_USERNAME", "").strip()
+
 
     DATABASE_URL = os.environ.get("DATABASE_URL")
     USE_POSTGRES = os.environ.get("USE_POSTGRES", "true" if DATABASE_URL else "false").lower() in ["true", "1"]
