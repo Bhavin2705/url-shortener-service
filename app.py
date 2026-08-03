@@ -139,6 +139,11 @@ def create_app(test_config=None):
         u = db.session.get(User, uid)
         return u if (u and u.is_admin) else None
 
+    @app.route("/health", methods=["GET"])
+    @app.route("/api/health", methods=["GET"])
+    def health_check():
+        return jsonify({"status": "healthy", "service": "url-shortener"}), 200
+
     @app.route("/")
     def serve_frontend():
         return send_from_directory(app.static_folder, "index.html")
@@ -146,6 +151,7 @@ def create_app(test_config=None):
     @app.route("/login")
     def serve_login():
         return send_from_directory(app.static_folder, "login.html")
+
 
 
     @app.route("/api/register", methods=["POST"])
