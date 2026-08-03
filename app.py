@@ -61,7 +61,6 @@ def create_app(test_config=None):
         app.config.update(test_config)
     db.init_app(app)
 
-    # --- Rate limiter with Redis backend and in-memory fallback ---
     redis_ssl = Config.REDIS_HOST.endswith(".upstash.io") or os.environ.get("REDIS_SSL", "false").lower() in ["true", "1"]
     redis_pwd = Config.REDIS_PASSWORD or None
 
@@ -76,26 +75,20 @@ def create_app(test_config=None):
         storage_uri=storage_uri,
         in_memory_fallback_enabled=True,
     )
+    app.limiter = limiter
+
 
     # --- Redis connection pool (created once at startup) ---
     redis_pool = None
     try:
-        redis_pool = redis.ConnectionPool(
-            host=Config.REDIS_HOST,
-            port=Config.REDIS_PORT,
-            db=Config.REDIS_DB,
-            password=redis_pwd,
-            ssl=redis_ssl,
-            ssl_cert_reqs=None,
-            socket_timeout=2,
-            max_connections=20,
-        )
+        redis_pool = redis.ConnectionPool.from_url(storage_uri, socket_timeout=2, max_connections=20)
         test_conn = redis.Redis(connection_pool=redis_pool)
         test_conn.ping()
         logger.info("Redis connection pool established")
     except Exception as e:
         logger.warning("Redis unavailable at startup, caching disabled: %s", e)
         redis_pool = None
+
 
 
     def get_redis():
