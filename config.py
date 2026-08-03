@@ -12,16 +12,16 @@ class Config:
     SESSION_COOKIE_SAMESITE = "Lax"
     SESSION_COOKIE_SECURE = os.environ.get("SESSION_COOKIE_SECURE", "false").lower() in ["true", "1"]
 
-    USE_POSTGRES = os.environ.get("USE_POSTGRES", "false").lower() in ["true", "1"]
-    if USE_POSTGRES:
-        u, p, h, pt, d = (os.environ.get(k, v) for k, v in [
-            ("POSTGRES_USER", "postgres"), ("POSTGRES_PASSWORD", "postgres"),
-            ("POSTGRES_HOST", "localhost"), ("POSTGRES_PORT", "5432"), ("POSTGRES_DB", "url_shortener_db")
-        ])
-        SQLALCHEMY_DATABASE_URI = f"postgresql://{u}:{p}@{h}:{pt}/{d}"
+    DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql://postgres.rewgyulmkgijvxnvpcjm:Bhavin%402005%23@aws-1-ap-south-1.pooler.supabase.com:6543/postgres")
+    USE_POSTGRES = os.environ.get("USE_POSTGRES", "true").lower() in ["true", "1"]
+    if USE_POSTGRES and DATABASE_URL:
+        if DATABASE_URL.startswith("postgres://"):
+            DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
+        SQLALCHEMY_DATABASE_URI = DATABASE_URL
     else:
         BASE_DIR = os.path.abspath(os.path.dirname(__file__))
         SQLALCHEMY_DATABASE_URI = f"sqlite:///{os.path.join(BASE_DIR, 'url_shortener.db')}"
+
 
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     SQLALCHEMY_ENGINE_OPTIONS = {"connect_args": {"timeout": 15}} if not USE_POSTGRES else {}
