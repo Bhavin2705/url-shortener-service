@@ -1,31 +1,39 @@
 import os
+import secrets
+import warnings
 
 class Config:
-    SECRET_KEY = os.environ.get("SECRET_KEY", "dev-secret-key-12345")
-    
-    # PostgreSQL URI from environment or SQLite fallback
-    DB_USER = os.environ.get("POSTGRES_USER", "postgres")
-    DB_PASSWORD = os.environ.get("POSTGRES_PASSWORD", "postgres")
-    DB_HOST = os.environ.get("POSTGRES_HOST", "localhost")
-    DB_PORT = os.environ.get("POSTGRES_PORT", "5432")
-    DB_NAME = os.environ.get("POSTGRES_DB", "url_shortener_db")
-    
+    SECRET_KEY = os.environ.get("SECRET_KEY")
+    if not SECRET_KEY:
+        warnings.warn("SECRET_KEY not set!", stacklevel=1)
+        SECRET_KEY = secrets.token_hex(32)
+
+    SESSION_COOKIE_HTTPONLY = True
+    SESSION_COOKIE_SAMESITE = "Lax"
+    SESSION_COOKIE_SECURE = os.environ.get("SESSION_COOKIE_SECURE", "false").lower() in ["true", "1"]
+
     USE_POSTGRES = os.environ.get("USE_POSTGRES", "false").lower() in ["true", "1"]
-    
     if USE_POSTGRES:
-        SQLALCHEMY_DATABASE_URI = f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+        u, p, h, pt, d = (os.environ.get(k, v) for k, v in [
+            ("POSTGRES_USER", "postgres"), ("POSTGRES_PASSWORD", "postgres"),
+            ("POSTGRES_HOST", "localhost"), ("POSTGRES_PORT", "5432"), ("POSTGRES_DB", "url_shortener_db")
+        ])
+        SQLALCHEMY_DATABASE_URI = f"postgresql://{u}:{p}@{h}:{pt}/{d}"
     else:
-        # SQLite fallback for quick local testing without PostgreSQL setup
         BASE_DIR = os.path.abspath(os.path.dirname(__file__))
         SQLALCHEMY_DATABASE_URI = f"sqlite:///{os.path.join(BASE_DIR, 'url_shortener.db')}"
-        
+
     SQLALCHEMY_TRACK_MODIFICATIONS = False
-    
-    # Redis configuration
+    SQLALCHEMY_ENGINE_OPTIONS = {"connect_args": {"timeout": 15}} if not USE_POSTGRES else {}
+
     REDIS_HOST = os.environ.get("REDIS_HOST", "localhost")
     REDIS_PORT = int(os.environ.get("REDIS_PORT", 6379))
     REDIS_DB = int(os.environ.get("REDIS_DB", 0))
-    REDIS_CACHE_TTL = 3600  # 1 hour cache TTL
-    
-    # Rate limit: 20 requests per minute
-    RATE_LIMIT_PER_MINUTE = 20
+
+    RATE_LIMIT_DEFAULT = os.environ.get("RATE_LIMIT_DEFAULT", "200 per hour")
+    RATE_LIMIT_LOGIN = os.environ.get("RATE_LIMIT_LOGIN", "5 per minute")
+    RATE_LIMIT_SHORTEN = os.environ.get("RATE_LIMIT_SHORTEN", "20 per hour")
+
+    ALLOWED_HOSTS = [h.strip() for h in os.environ.get("ALLOWED_HOSTS", "localhost,localhost:5000,127.0.0.1,127.0.0.1:5000").split(",")]
+    IP_HASH_SECRET = os.environ.get("IP_HASH_SECRET", secrets.token_hex(32))
+

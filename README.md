@@ -34,18 +34,17 @@ The Scalable URL Shortener Service transforms long URLs into clean, 6-character 
 
 ```text
 url-shortener-service/
-├── app.py                      # Flask application entry point
+├── app.py                      # Flask application, REST routes & admin handlers
 ├── config.py                   # Environment & database configuration settings
-├── models.py                   # SQLAlchemy database schemas (UrlMapping, ClickAnalytics)
-├── services.py                 # Core business logic (secrets generator, IP hashing, Redis cache)
-├── routes.py                   # REST API routes and HTTP 302 redirection handlers
+├── models.py                   # SQLAlchemy database schemas (User, Link, Click)
+├── wsgi.py                     # Production Waitress WSGI launcher
 ├── requirements.txt            # Python dependencies
 ├── Dockerfile                  # Production container definition
 ├── docker-compose.yml          # Multi-container orchestration (web, db, cache)
 ├── static/
-│   ├── index.html              # Analytics & link shortening dashboard UI
+│   ├── index.html              # Admin & link shortening dashboard UI
 │   ├── style.css               # Clean dark slate design system with Inter font
-│   └── app.js                  # Frontend API client and Chart.js integration
+│   └── app.js                  # Frontend API client, admin panel & Chart.js
 └── tests/
     └── test_url_shortener.py   # Automated integration test suite
 ```
@@ -57,23 +56,21 @@ url-shortener-service/
 ### 4.1 Data Redundancy Elimination
 The database schema isolates URL metadata from analytical events. Click totals are calculated directly via indexed database count queries:
 ```python
-total_clicks = ClickAnalytics.query.filter_by(short_code=short_code).count()
+total_clicks = Click.query.filter_by(short_code=short_code).count()
 ```
 
 ### 4.2 Cryptographically Secure Short Code Generation
-Short codes are generated using `secrets.choice` across `[a-zA-Z0-9]`, avoiding predictable auto-increment IDs or hash truncation collisions:
+Short codes are generated using `secrets.choice` across `[a-zA-Z0-9]`, avoiding predictable auto-increment IDs:
 ```python
 def generate_short_code(length=6):
-    return "".join(secrets.choice(BASE62_ALPHABET) for _ in range(length))
+    return "".join(secrets.choice(BASE62) for _ in range(length))
 ```
-If a custom alias collision occurs, database transaction rollbacks handle retries gracefully via `sqlalchemy.exc.IntegrityError` handling.
 
 ### 4.3 Privacy & Compliance (IP Hashing)
 Raw client IP addresses are anonymized via salted SHA-256 digests prior to database insertion:
 ```python
-def hash_ip_address(user_ip, salt="url_shortener_ip_salt"):
-    salted_string = f"{user_ip}:{salt}"
-    return hashlib.sha256(salted_string.encode("utf-8")).hexdigest()[:16]
+def hash_ip(ip):
+    return hashlib.sha256(f"{ip}:{Config.IP_HASH_SECRET}".encode()).hexdigest()[:32]
 ```
 
 ---
@@ -81,7 +78,7 @@ def hash_ip_address(user_ip, salt="url_shortener_ip_salt"):
 ## 5. API Reference
 
 ### 5.1 Shorten URL
-`POST /api/urls/shorten`
+`POST /api/shorten`
 
 **Request Payload**:
 ```json
@@ -96,7 +93,7 @@ def hash_ip_address(user_ip, salt="url_shortener_ip_salt"):
 ```json
 {
   "success": true,
-  "data": {
+  "link": {
     "id": 1,
     "original_url": "https://example.com/long/path/document",
     "short_code": "my-doc",
@@ -114,7 +111,15 @@ def hash_ip_address(user_ip, salt="url_shortener_ip_salt"):
 **Response**: HTTP 302 Found (Redirects to original target URL).
 
 ### 5.3 Link Analytics
-`GET /api/urls/<short_code>/analytics`
+`GET /api/links/<short_code>/analytics`
+
+### 5.4 Admin Management APIs
+- `GET /api/admin/stats` – System overview metrics
+- `GET /api/admin/users` – User accounts overview
+- `DELETE /api/admin/users/<id>` – Ban/delete user account
+- `GET /api/admin/links` – Platform-wide link moderation list
+- `DELETE /api/admin/links/<short_code>` – Force-delete link
+
 
 **Response (200 OK)**:
 ```json

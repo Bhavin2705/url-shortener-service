@@ -14,4 +14,4 @@ EXPOSE 5000
 ENV PYTHONUNBUFFERED=1
 ENV USE_POSTGRES=true
 
-CMD ["python", "app.py"]
+CMD ["python", "wsgi.py"]
