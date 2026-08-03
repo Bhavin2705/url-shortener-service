@@ -223,18 +223,49 @@ body {
 .result-box {
     display: flex;
     gap: 0.75rem;
+    align-items: center;
+    margin-top: 1rem;
 }
 
 .result-box input {
     flex: 1;
-    background-color: var(--bg);
+    background-color: #09090b;
     border: 1px solid var(--border);
     border-radius: var(--radius);
-    padding: 0.75rem 1rem;
-    color: var(--accent);
+    padding: 0.65rem 0.9rem;
+    color: #10b981;
     font-family: var(--font-mono);
     font-size: 0.9rem;
+    font-weight: 600;
+    outline: none;
 }
+
+.qr-container {
+    margin-top: 1.5rem;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 1.5rem;
+    background-color: #09090b;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+}
+
+.qr-container #qrCanvas {
+    background-color: #ffffff;
+    padding: 0.85rem;
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    border-radius: var(--radius);
+}
+
+.qr-container img {
+    display: block;
+    width: 160px;
+    height: 160px;
+}
+
 
 .search-row {
     display: flex;
