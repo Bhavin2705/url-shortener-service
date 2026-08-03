@@ -41,5 +41,6 @@ services:
 databases:
   - name: url-shortener-db
     databaseName: url_shortener_db
-    user: postgres
+    user: url_shortener_user
+
 
