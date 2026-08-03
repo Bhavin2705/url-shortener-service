@@ -159,6 +159,13 @@ function shortenLink() {
     const alertBox = document.getElementById("formAlert");
     alertBox.classList.add("hidden");
 
+    const btn = document.getElementById("shortenBtn");
+    const originalBtnHTML = btn.innerHTML;
+    btn.disabled = true;
+    btn.style.opacity = "0.7";
+    btn.style.cursor = "not-allowed";
+    btn.innerHTML = `Generating...`;
+
     const payload = {
         original_url: document.getElementById("originalUrl").value.trim(),
         custom_alias: document.getElementById("customAlias").value.trim(),
@@ -185,8 +192,15 @@ function shortenLink() {
     .catch(() => {
         alertBox.innerText = "Error contacting server";
         alertBox.classList.remove("hidden");
+    })
+    .finally(() => {
+        btn.disabled = false;
+        btn.style.opacity = "1";
+        btn.style.cursor = "pointer";
+        btn.innerHTML = originalBtnHTML;
     });
 }
+
 
 function viewMetrics(code) {
     fetch(`/api/links/${code}/analytics`)

@@ -45,7 +45,8 @@ document.addEventListener("DOMContentLoaded", () => {
         e.preventDefault();
         const username = document.getElementById("loginUsername").value.trim();
         const password = document.getElementById("loginPassword").value.trim();
-        await handleAuth("/api/login", { username, password });
+        const submitBtn = loginForm.querySelector("button[type='submit']");
+        await handleAuth("/api/login", { username, password }, submitBtn, "Signing In...");
     });
 
     // Register Submission
@@ -53,11 +54,18 @@ document.addEventListener("DOMContentLoaded", () => {
         e.preventDefault();
         const username = document.getElementById("regUsername").value.trim();
         const password = document.getElementById("regPassword").value.trim();
-        await handleAuth("/api/register", { username, password });
+        const submitBtn = regForm.querySelector("button[type='submit']");
+        await handleAuth("/api/register", { username, password }, submitBtn, "Creating Account...");
     });
 
-    async function handleAuth(endpoint, bodyData) {
+    async function handleAuth(endpoint, bodyData, submitBtn, loadingText) {
         hideAlert();
+        const originalText = submitBtn.innerText;
+        submitBtn.disabled = true;
+        submitBtn.style.opacity = "0.7";
+        submitBtn.style.cursor = "not-allowed";
+        submitBtn.innerText = loadingText;
+
         try {
             const res = await fetch(endpoint, {
                 method: "POST",
@@ -72,8 +80,14 @@ document.addEventListener("DOMContentLoaded", () => {
             }
         } catch (err) {
             showAlert("Server error. Please try again.");
+        } finally {
+            submitBtn.disabled = false;
+            submitBtn.style.opacity = "1";
+            submitBtn.style.cursor = "pointer";
+            submitBtn.innerText = originalText;
         }
     }
+
 
     function showAlert(msg) {
         alertBox.textContent = msg;
