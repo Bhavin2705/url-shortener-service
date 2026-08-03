@@ -62,11 +62,18 @@ def create_app(test_config=None):
     db.init_app(app)
 
     # --- Rate limiter with Redis backend and in-memory fallback ---
+    redis_ssl = Config.REDIS_HOST.endswith(".upstash.io") or os.environ.get("REDIS_SSL", "false").lower() in ["true", "1"]
+    redis_pwd = Config.REDIS_PASSWORD or None
+
+    proto = "rediss" if redis_ssl else "redis"
+    pwd_part = f":{redis_pwd}@" if redis_pwd else ""
+    storage_uri = f"{proto}://{pwd_part}{Config.REDIS_HOST}:{Config.REDIS_PORT}/{Config.REDIS_DB}"
+
     limiter = Limiter(
         get_remote_address,
         app=app,
         default_limits=[Config.RATE_LIMIT_DEFAULT],
-        storage_uri=f"redis://{Config.REDIS_HOST}:{Config.REDIS_PORT}/{Config.REDIS_DB}",
+        storage_uri=storage_uri,
         in_memory_fallback_enabled=True,
     )
 
@@ -77,16 +84,19 @@ def create_app(test_config=None):
             host=Config.REDIS_HOST,
             port=Config.REDIS_PORT,
             db=Config.REDIS_DB,
-            socket_timeout=1,
+            password=redis_pwd,
+            ssl=redis_ssl,
+            ssl_cert_reqs=None,
+            socket_timeout=2,
             max_connections=20,
         )
-        # Verify connectivity at startup
         test_conn = redis.Redis(connection_pool=redis_pool)
         test_conn.ping()
         logger.info("Redis connection pool established")
     except Exception as e:
         logger.warning("Redis unavailable at startup, caching disabled: %s", e)
         redis_pool = None
+
 
     def get_redis():
         """Return a Redis client from the pool, or None if unavailable."""

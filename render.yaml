@@ -24,6 +24,13 @@ services:
         fromDatabase:
           name: url-shortener-db
           property: database
+      - key: REDIS_HOST
+        value: "epic-gorilla-185314.upstash.io"
+      - key: REDIS_PORT
+        value: "6379"
+      - key: REDIS_PASSWORD
+        value: "gQAAAAAAAtPiAAIgcDI3ZGMzOTcwNjZkZjI0OTA2YTVmNzY2NmE2ZDg1YzJiYQ"
+
 
 databases:
   - name: url-shortener-db
