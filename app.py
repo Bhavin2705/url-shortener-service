@@ -469,12 +469,10 @@ def create_app(test_config=None):
 
     with app.app_context():
         try:
-            db.session.execute(db.text("ALTER TABLE users ADD COLUMN IF NOT EXISTS email VARCHAR(120);"))
-            db.session.execute(db.text("ALTER TABLE links ADD COLUMN IF NOT EXISTS user_email VARCHAR(120);"))
-            db.session.commit()
+            db.create_all()
         except Exception:
-            db.session.rollback()
-        db.create_all()
+            pass
+
 
 
     return app
