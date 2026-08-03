@@ -133,10 +133,10 @@ def create_app(test_config=None):
         return response
 
     def check_admin():
-        uid = session.get("user_id")
-        if not uid:
+        user_email = session.get("user_email") or session.get("user_id")
+        if not user_email:
             return None
-        u = db.session.get(User, uid)
+        u = db.session.get(User, user_email)
         return u if (u and u.is_admin) else None
 
     @app.route("/health", methods=["GET"])
@@ -153,49 +153,55 @@ def create_app(test_config=None):
         return send_from_directory(app.static_folder, "login.html")
 
 
-
     @app.route("/api/register", methods=["POST"])
     @limiter.limit("10 per minute")
     def register():
         data = request.get_json() or {}
+        email = data.get("email", "").strip().lower()
         username = data.get("username", "").strip()
         password = data.get("password", "").strip()
-        if not username or not password:
-            return jsonify({"success": False, "error": "Username and password required"}), 400
+        if not email or not username or not password:
+            return jsonify({"success": False, "error": "Email, username, and password required"}), 400
+        if not re.match(r'^[\w\.-]+@[\w\.-]+\.\w+$', email):
+            return jsonify({"success": False, "error": "Invalid email format"}), 400
         if len(password) < 8:
             return jsonify({"success": False, "error": "Password must be at least 8 characters"}), 400
         if not re.match(r'^[a-zA-Z0-9_]{3,50}$', username):
             return jsonify({"success": False, "error": "Username must be 3-50 alphanumeric characters or underscores"}), 400
+        if db.session.get(User, email):
+            return jsonify({"success": False, "error": "Email already registered"}), 409
         if User.query.filter_by(username=username).first():
-            return jsonify({"success": False, "error": "Username already exists"}), 409
-        user = User(username=username)
+            return jsonify({"success": False, "error": "Username already taken"}), 409
+        user = User(email=email, username=username)
         user.set_password(password)
         admin_env = (app.config.get("ADMIN_USERNAME") or Config.ADMIN_USERNAME or "").lower()
-        if admin_env and username.lower() == admin_env:
+        if admin_env and (email == admin_env or username.lower() == admin_env):
             user.is_admin = True
         else:
             user.is_admin = False
 
-
         db.session.add(user)
         db.session.commit()
-        session["user_id"] = user.id
+        session["user_email"] = user.email
+        session["user_id"] = user.email
         return jsonify({"success": True, "user": user.to_dict()}), 201
 
     @app.route("/api/login", methods=["POST"])
     @limiter.limit(Config.RATE_LIMIT_LOGIN)
     def login():
         data = request.get_json() or {}
-        username = data.get("username", "").strip()
+        login_id = data.get("email", "").strip() or data.get("username", "").strip()
         password = data.get("password", "").strip()
-        user = User.query.filter_by(username=username).first()
+        user = User.query.filter((User.email == login_id.lower()) | (User.username == login_id)).first()
         if not user or not user.check_password(password):
             return jsonify({"success": False, "error": "Invalid credentials"}), 401
-        session["user_id"] = user.id
+        session["user_email"] = user.email
+        session["user_id"] = user.email
         return jsonify({"success": True, "user": user.to_dict()}), 200
 
     @app.route("/api/logout", methods=["POST"])
     def logout():
+        session.pop("user_email", None)
         session.pop("user_id", None)
         return jsonify({"success": True}), 200
 
@@ -222,23 +228,24 @@ def create_app(test_config=None):
         users_data = []
         for u in User.query.all():
             d = u.to_dict()
-            d["link_count"] = Link.query.filter_by(user_id=u.id, is_active=True).count()
+            d["link_count"] = Link.query.filter_by(user_email=u.email, is_active=True).count()
             users_data.append(d)
         return jsonify({"success": True, "users": users_data}), 200
 
-    @app.route("/api/admin/users/<int:user_id>", methods=["DELETE"])
-    def admin_delete_user(user_id):
+    @app.route("/api/admin/users/<path:email_id>", methods=["DELETE"])
+    def admin_delete_user(email_id):
         admin = check_admin()
         if not admin:
             return jsonify({"success": False, "error": "Admin required"}), 403
-        user = db.session.get(User, user_id)
+        user = db.session.get(User, email_id) or User.query.filter_by(username=email_id).first()
         if not user:
             return jsonify({"success": False, "error": "User not found"}), 404
-        if user.id == admin.id:
+        if user.email == admin.email:
             return jsonify({"success": False, "error": "Cannot delete self"}), 400
         db.session.delete(user)
         db.session.commit()
         return jsonify({"success": True}), 200
+
 
     @app.route("/api/admin/links", methods=["GET"])
     def admin_links():
@@ -266,15 +273,16 @@ def create_app(test_config=None):
 
     @app.route("/api/me", methods=["GET"])
     def get_me():
-        user_id = session.get("user_id")
-        if not user_id:
+        user_email = session.get("user_email") or session.get("user_id")
+        if not user_email:
             return jsonify({"success": True, "user": None, "links": []}), 200
-        user = db.session.get(User, user_id)
+        user = db.session.get(User, user_email)
         if not user:
+            session.pop("user_email", None)
             session.pop("user_id", None)
             return jsonify({"success": True, "user": None, "links": []}), 200
         host_url = request.host_url.rstrip("/")
-        user_links = [link.to_dict(base_url=host_url) for link in Link.query.filter_by(user_id=user_id, is_active=True).all()]
+        user_links = [link.to_dict(base_url=host_url) for link in Link.query.filter_by(user_email=user_email, is_active=True).all()]
         return jsonify({"success": True, "user": user.to_dict(), "links": user_links}), 200
 
     @app.route("/api/shorten", methods=["POST"])
@@ -311,13 +319,13 @@ def create_app(test_config=None):
                 expiration_date = datetime.now(timezone.utc) + timedelta(days=days)
 
         short_code = custom_alias if custom_alias else None
-        user_id = session.get("user_id")
+        user_email = session.get("user_email") or session.get("user_id")
         created_link = None
 
         for _ in range(5):
             try:
                 code = short_code if short_code else generate_short_code()
-                new_link = Link(original_url=original_url, short_code=code, user_id=user_id, expiration_date=expiration_date)
+                new_link = Link(original_url=original_url, short_code=code, user_email=user_email, expiration_date=expiration_date)
                 db.session.add(new_link)
                 db.session.commit()
                 created_link = new_link
@@ -374,11 +382,13 @@ def create_app(test_config=None):
         if not link:
             return jsonify({"success": False, "error": "Short link not found"}), 404
 
-        user_id = session.get("user_id")
-        if link.user_id is None:
+        user_email = session.get("user_email") or session.get("user_id")
+        if link.user_email is None:
             return jsonify({"success": False, "error": "Analytics unavailable for anonymous links"}), 403
-        if link.user_id != user_id:
-            return jsonify({"success": False, "error": "Unauthorized access to analytics"}), 403
+        if link.user_email != user_email:
+            admin = check_admin()
+            if not admin:
+                return jsonify({"success": False, "error": "Unauthorized access to analytics"}), 403
 
         total_clicks = Click.query.filter_by(short_code=short_code).count()
         click_records = Click.query.filter_by(short_code=short_code).all()
@@ -409,17 +419,15 @@ def create_app(test_config=None):
         if not link:
             return jsonify({"success": False, "error": "Short link not found"}), 404
 
-        user_id = session.get("user_id")
-        if not user_id or link.user_id != user_id:
+        user_email = session.get("user_email") or session.get("user_id")
+        if not user_email or link.user_email != user_email:
             return jsonify({"success": False, "error": "Unauthorized"}), 403
 
         link.is_active = False
         link.short_code = f"_del_{link.id}"[:16]
         db.session.commit()
         cache_del(f"url:{short_code}")
-
         return jsonify({"success": True}), 200
-
 
 
     with app.app_context():

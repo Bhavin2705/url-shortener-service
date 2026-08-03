@@ -43,9 +43,14 @@
 
         <form id="registerForm" class="auth-form-card hidden">
             <div class="form-group">
+                <label for="regEmail">Email Address (Primary Key)</label>
+                <input type="email" id="regEmail" placeholder="name@example.com" required autocomplete="email">
+            </div>
+            <div class="form-group">
                 <label for="regUsername">Username</label>
                 <input type="text" id="regUsername" placeholder="3-50 characters" required autocomplete="username">
             </div>
+
             <div class="form-group">
                 <label for="regPassword">Password</label>
                 <div class="password-wrapper">

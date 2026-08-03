@@ -77,6 +77,7 @@ def test_redirection_and_analytics(client):
 
 def test_user_auth_and_rbac(client):
     reg_res = client.post("/api/register", json={
+        "email": "testuser@example.com",
         "username": "testuser",
         "password": "secretpassword123"
     })
@@ -119,6 +120,7 @@ def test_case_normalization(client):
 
 def test_alias_recycling(client):
     client.post("/api/register", json={
+        "email": "aliasuser@example.com",
         "username": "aliasuser",
         "password": "password123"
     })
@@ -135,8 +137,11 @@ def test_alias_recycling(client):
         "original_url": "https://example.com/link2",
         "custom_alias": "reusable"
     })
+    assert res2.status_code == 201
+
 def test_admin_dashboard_and_permissions(client):
     admin_reg = client.post("/api/register", json={
+        "email": "adminuser@example.com",
         "username": "adminuser",
         "password": "password123"
     })
@@ -150,6 +155,7 @@ def test_admin_dashboard_and_permissions(client):
     client.post("/api/logout")
 
     user_reg = client.post("/api/register", json={
+        "email": "normaluser@example.com",
         "username": "normaluser",
         "password": "password123"
     })
@@ -158,5 +164,6 @@ def test_admin_dashboard_and_permissions(client):
 
     unauth_stats = client.get("/api/admin/stats")
     assert unauth_stats.status_code == 403
+
 
 

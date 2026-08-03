@@ -52,11 +52,13 @@ document.addEventListener("DOMContentLoaded", () => {
     // Register Submission
     regForm.addEventListener("submit", async (e) => {
         e.preventDefault();
+        const email = document.getElementById("regEmail").value.trim();
         const username = document.getElementById("regUsername").value.trim();
         const password = document.getElementById("regPassword").value.trim();
         const submitBtn = regForm.querySelector("button[type='submit']");
-        await handleAuth("/api/register", { username, password }, submitBtn, "Creating Account...");
+        await handleAuth("/api/register", { email, username, password }, submitBtn, "Creating Account...");
     });
+
 
     async function handleAuth(endpoint, bodyData, submitBtn, loadingText) {
         hideAlert();
