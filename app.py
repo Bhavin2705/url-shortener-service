@@ -112,8 +112,14 @@ def create_app(test_config=None):
 
     @app.before_request
     def validate_host():
-        if request.host not in Config.ALLOWED_HOSTS:
+        if "*" in Config.ALLOWED_HOSTS:
+            return
+        h = request.host.split(":")[0]
+        if h.endswith(".vercel.app") or h.endswith(".onrender.com"):
+            return
+        if request.host not in Config.ALLOWED_HOSTS and h not in Config.ALLOWED_HOSTS:
             abort(400, description="Invalid Host header")
+
 
     @app.after_request
     def set_security_headers(response):
