@@ -144,8 +144,7 @@ def create_app(test_config=None):
         return send_from_directory(app.static_folder, "index.html")
 
     @app.route("/login")
-    @app.route("/register")
-    def serve_auth():
+    def serve_login():
         return send_from_directory(app.static_folder, "login.html")
 
 
