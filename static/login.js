@@ -8,8 +8,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // Toggle view
     showLoginBtn.addEventListener("click", () => {
-        showLoginBtn.className = "flex-1 py-2 text-sm font-medium text-emerald-500 border-b-2 border-emerald-500 cursor-pointer";
-        showRegBtn.className = "flex-1 py-2 text-sm font-medium text-zinc-400 hover:text-zinc-200 border-b-2 border-transparent cursor-pointer";
+        showLoginBtn.classList.add("active");
+        showRegBtn.classList.remove("active");
         loginForm.classList.remove("hidden");
         regForm.classList.add("hidden");
         authTitle.textContent = "Sign In";
@@ -17,14 +17,13 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
     showRegBtn.addEventListener("click", () => {
-        showRegBtn.className = "flex-1 py-2 text-sm font-medium text-emerald-500 border-b-2 border-emerald-500 cursor-pointer";
-        showLoginBtn.className = "flex-1 py-2 text-sm font-medium text-zinc-400 hover:text-zinc-200 border-b-2 border-transparent cursor-pointer";
+        showRegBtn.classList.add("active");
+        showLoginBtn.classList.remove("active");
         regForm.classList.remove("hidden");
         loginForm.classList.add("hidden");
         authTitle.textContent = "Create Account";
         hideAlert();
     });
-
 
     // Password visibility toggle
     document.querySelectorAll(".toggle-password-btn").forEach(btn => {

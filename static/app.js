@@ -45,10 +45,10 @@ function checkUserSession() {
 
 function renderUserHeader(user) {
     const nav = document.getElementById("authNav");
-    const adminTag = user.is_admin ? `<span class="px-2 py-0.5 text-xs font-bold text-black bg-emerald-500 ml-2">ADMIN</span>` : "";
+    const adminTag = user.is_admin ? `<span class="badge" style="background:#10b981;color:#000;padding:2px 8px;font-size:12px;margin-left:6px;font-weight:700;">ADMIN</span>` : "";
     nav.innerHTML = `
-        <span class="text-sm text-zinc-400">Hello, <strong class="text-emerald-400 font-semibold">${escapeHtml(user.username)}</strong>${adminTag}</span>
-        <button id="logoutBtn" class="px-3.5 py-1.5 text-xs font-medium text-zinc-200 bg-zinc-950 border border-zinc-800 hover:border-zinc-600 transition cursor-pointer">Logout</button>
+        <span class="user-welcome">Hello, <strong>${escapeHtml(user.username)}</strong>${adminTag}</span>
+        <button id="logoutBtn" class="btn secondary-btn">Logout</button>
     `;
     document.getElementById("logoutBtn").addEventListener("click", handleLogout);
 }
@@ -57,7 +57,7 @@ function renderUserHeader(user) {
 function renderLoggedOutNav() {
     const nav = document.getElementById("authNav");
     nav.innerHTML = `
-        <a href="/login" class="px-4 py-2 text-sm font-medium text-black bg-emerald-500 hover:bg-emerald-600 transition">Sign In / Register</a>
+        <a href="/login" class="btn primary-btn">Sign In / Register</a>
     `;
 }
 
@@ -67,17 +67,16 @@ function renderUserDashboard(links) {
     tbody.innerHTML = "";
 
     if (links.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="4" class="py-4 text-center text-zinc-500">No links created yet.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="4" style="text-align:center;">No links created yet.</td></tr>`;
     } else {
         links.forEach(link => {
             const tr = document.createElement("tr");
-            tr.className = "hover:bg-zinc-950/50 transition";
             tr.innerHTML = `
-                <td class="py-3 px-3"><a href="${escapeHtml(link.short_url)}" target="_blank" class="font-mono text-emerald-400 hover:underline">/r/${escapeHtml(link.short_code)}</a></td>
-                <td class="py-3 px-3 max-w-[200px] truncate text-zinc-300" title="${escapeHtml(link.original_url)}">${escapeHtml(link.original_url)}</td>
-                <td class="py-3 px-3 text-zinc-400">${new Date(link.created_at).toLocaleDateString()}</td>
-                <td class="py-3 px-3">
-                    <button class="px-2.5 py-1 text-xs font-medium text-white bg-red-600 hover:bg-red-700 transition cursor-pointer" onclick="deleteLink('${escapeHtml(link.short_code)}')">Delete</button>
+                <td><a href="${escapeHtml(link.short_url)}" target="_blank">/r/${escapeHtml(link.short_code)}</a></td>
+                <td class="truncate" title="${escapeHtml(link.original_url)}">${escapeHtml(link.original_url)}</td>
+                <td>${new Date(link.created_at).toLocaleDateString()}</td>
+                <td>
+                    <button class="btn danger-btn table-btn" onclick="deleteLink('${escapeHtml(link.short_code)}')">Delete</button>
                 </td>
             `;
             tbody.appendChild(tr);
@@ -86,7 +85,6 @@ function renderUserDashboard(links) {
 
     dashboard.classList.remove("hidden");
 }
-
 
 
 function setupEventListeners() {
@@ -313,13 +311,12 @@ function loadAdminDashboard() {
             ubody.innerHTML = "";
             data.users.forEach(u => {
                 const tr = document.createElement("tr");
-                tr.className = "hover:bg-zinc-950/50 transition";
                 tr.innerHTML = `
-                    <td class="py-3 px-3 font-mono text-zinc-400">${u.id}</td>
-                    <td class="py-3 px-3 font-semibold text-zinc-200">${escapeHtml(u.username)}</td>
-                    <td class="py-3 px-3 text-zinc-400">${u.is_admin ? '<span class="text-emerald-400 font-bold">Admin</span>' : 'User'}</td>
-                    <td class="py-3 px-3 font-mono text-zinc-300">${u.link_count}</td>
-                    <td class="py-3 px-3">${u.is_admin ? '-' : `<button class="px-2.5 py-1 text-xs font-medium text-white bg-red-600 hover:bg-red-700 transition cursor-pointer" onclick="adminDeleteUser(${u.id})">Delete User</button>`}</td>
+                    <td>${u.id}</td>
+                    <td><strong>${escapeHtml(u.username)}</strong></td>
+                    <td>${u.is_admin ? "Admin" : "User"}</td>
+                    <td>${u.link_count}</td>
+                    <td>${u.is_admin ? "-" : `<button class="btn table-btn danger-btn" onclick="adminDeleteUser(${u.id})">Delete User</button>`}</td>
                 `;
                 ubody.appendChild(tr);
             });
@@ -332,19 +329,17 @@ function loadAdminDashboard() {
             lbody.innerHTML = "";
             data.links.forEach(l => {
                 const tr = document.createElement("tr");
-                tr.className = "hover:bg-zinc-950/50 transition";
                 tr.innerHTML = `
-                    <td class="py-3 px-3 font-mono text-emerald-400">/r/${escapeHtml(l.short_code)}</td>
-                    <td class="py-3 px-3 max-w-[200px] truncate text-zinc-300" title="${escapeHtml(l.original_url)}">${escapeHtml(l.original_url)}</td>
-                    <td class="py-3 px-3 font-mono text-zinc-400">${l.user_id || "Anon"}</td>
-                    <td class="py-3 px-3 text-zinc-400">${l.is_active ? '<span class="text-emerald-400">Active</span>' : '<span class="text-red-400">Inactive</span>'}</td>
-                    <td class="py-3 px-3">${l.is_active ? `<button class="px-2.5 py-1 text-xs font-medium text-white bg-red-600 hover:bg-red-700 transition cursor-pointer" onclick="adminDeleteLink('${escapeHtml(l.short_code)}')">Delete Link</button>` : '-'}</td>
+                    <td>/r/${escapeHtml(l.short_code)}</td>
+                    <td class="truncate">${escapeHtml(l.original_url)}</td>
+                    <td>${l.user_id || "Anon"}</td>
+                    <td>${l.is_active ? "Active" : "Inactive"}</td>
+                    <td>${l.is_active ? `<button class="btn table-btn danger-btn" onclick="adminDeleteLink('${escapeHtml(l.short_code)}')">Delete Link</button>` : "-"}</td>
                 `;
                 lbody.appendChild(tr);
             });
         }
     });
-
 
     document.getElementById("adminDashboard").classList.remove("hidden");
 }
