@@ -19,6 +19,7 @@ function checkUserSession() {
             if (data.success && data.user) {
                 renderUserHeader(data.user);
                 renderUserDashboard(data.links || []);
+                document.getElementById("analyticsSearchCard").classList.remove("hidden");
                 if (data.user.is_admin) {
                     loadAdminDashboard();
                 } else {
@@ -28,12 +29,19 @@ function checkUserSession() {
                 renderLoggedOutNav();
                 document.getElementById("userDashboard").classList.add("hidden");
                 document.getElementById("adminDashboard").classList.add("hidden");
+                document.getElementById("analyticsSearchCard").classList.add("hidden");
+                document.getElementById("analyticsDashboard").classList.add("hidden");
             }
         })
         .catch(() => {
             renderLoggedOutNav();
+            document.getElementById("userDashboard").classList.add("hidden");
+            document.getElementById("adminDashboard").classList.add("hidden");
+            document.getElementById("analyticsSearchCard").classList.add("hidden");
+            document.getElementById("analyticsDashboard").classList.add("hidden");
         });
 }
+
 
 function renderUserHeader(user) {
     const nav = document.getElementById("authNav");
