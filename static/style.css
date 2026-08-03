@@ -110,10 +110,10 @@ body {
 
 .form-group input {
     width: 100%;
-    background-color: var(--bg);
+    background-color: #09090b;
     border: 1px solid var(--border);
     border-radius: var(--radius);
-    padding: 0.75rem 1rem;
+    padding: 0.65rem 0.9rem;
     color: var(--text);
     font-family: var(--font-sans);
     font-size: 0.9rem;
@@ -121,8 +121,12 @@ body {
     transition: border-color 0.15s;
 }
 
+.form-group input::placeholder {
+    color: #71717a;
+}
+
 .form-group input:focus {
-    border-color: var(--accent);
+    border: 1px solid #10b981;
 }
 
 .password-wrapper {
@@ -167,15 +171,17 @@ body {
     align-items: center;
     justify-content: center;
     gap: 0.5rem;
-    padding: 0.75rem 1.25rem;
+    padding: 0.65rem 1.15rem;
     border-radius: var(--radius);
     font-size: 0.85rem;
-    font-weight: 600;
+    font-weight: 500;
+    letter-spacing: -0.01em;
     cursor: pointer;
     border: 1px solid transparent;
     text-decoration: none;
     transition: background-color 0.15s, border-color 0.15s;
 }
+
 
 .primary-btn {
     background-color: var(--accent);
@@ -237,13 +243,24 @@ body {
 
 .search-row input {
     flex: 1;
-    background-color: var(--bg);
+    background-color: #09090b;
     border: 1px solid var(--border);
     border-radius: var(--radius);
-    padding: 0.75rem 1rem;
+    padding: 0.65rem 0.9rem;
     color: var(--text);
     font-size: 0.9rem;
+    outline: none;
+    transition: border-color 0.15s;
 }
+
+.search-row input::placeholder {
+    color: #71717a;
+}
+
+.search-row input:focus {
+    border: 1px solid #10b981;
+}
+
 
 .table-wrapper {
     overflow-x: auto;
