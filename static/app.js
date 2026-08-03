@@ -25,19 +25,19 @@ function checkUserSession() {
                     document.getElementById("adminDashboard").classList.add("hidden");
                 }
             } else {
-                renderGuestHeader();
+                renderLoggedOutNav();
                 document.getElementById("userDashboard").classList.add("hidden");
                 document.getElementById("adminDashboard").classList.add("hidden");
             }
         })
         .catch(() => {
-            renderGuestHeader();
+            renderLoggedOutNav();
         });
 }
 
 function renderUserHeader(user) {
     const nav = document.getElementById("authNav");
-    const adminTag = user.is_admin ? `<span class="badge" style="background:#6366f1;color:#fff;padding:2px 8px;border-radius:4px;font-size:12px;margin-left:6px;">ADMIN</span>` : "";
+    const adminTag = user.is_admin ? `<span class="badge" style="background:#10b981;color:#000;padding:2px 8px;font-size:12px;margin-left:6px;font-weight:700;">ADMIN</span>` : "";
     nav.innerHTML = `
         <span class="user-welcome">Hello, <strong>${escapeHtml(user.username)}</strong>${adminTag}</span>
         <button id="logoutBtn" class="btn secondary-btn">Logout</button>
@@ -47,7 +47,6 @@ function renderUserHeader(user) {
 
 
 function renderLoggedOutNav() {
-    currentUser = null;
     const nav = document.getElementById("authNav");
     nav.innerHTML = `
         <a href="/login" class="btn primary-btn">Sign In / Register</a>
@@ -69,7 +68,7 @@ function renderUserDashboard(links) {
                 <td class="truncate" title="${escapeHtml(link.original_url)}">${escapeHtml(link.original_url)}</td>
                 <td>${new Date(link.created_at).toLocaleDateString()}</td>
                 <td>
-                    <button class="btn danger-btn table-btn" onclick="deleteUserLink('${escapeHtml(link.short_code)}')">Delete</button>
+                    <button class="btn danger-btn table-btn" onclick="deleteLink('${escapeHtml(link.short_code)}')">Delete</button>
                 </td>
             `;
             tbody.appendChild(tr);
@@ -78,6 +77,7 @@ function renderUserDashboard(links) {
 
     dashboard.classList.remove("hidden");
 }
+
 
 function setupEventListeners() {
     document.getElementById("shortenForm").addEventListener("submit", (e) => {
