@@ -23,8 +23,23 @@ services:
         fromDatabase:
           name: url-shortener-db
           property: database
+      - key: REDIS_HOST
+        fromService:
+          type: redis
+          name: url-shortener-redis
+          property: host
+      - key: REDIS_PORT
+        fromService:
+          type: redis
+          name: url-shortener-redis
+          property: port
+
+  - type: redis
+    name: url-shortener-redis
+    ipAllowList: []
 
 databases:
   - name: url-shortener-db
     databaseName: url_shortener_db
     user: postgres
+
