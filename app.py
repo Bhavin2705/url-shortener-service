@@ -143,6 +143,12 @@ def create_app(test_config=None):
     def serve_frontend():
         return send_from_directory(app.static_folder, "index.html")
 
+    @app.route("/login")
+    @app.route("/register")
+    def serve_auth():
+        return send_from_directory(app.static_folder, "login.html")
+
+
     @app.route("/api/register", methods=["POST"])
     @limiter.limit("10 per minute")
     def register():

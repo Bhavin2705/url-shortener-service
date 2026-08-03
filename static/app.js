@@ -3,97 +3,23 @@ let referrerChartInstance = null;
 
 function escapeHtml(str) {
     const div = document.createElement('div');
-    div.textContent = str;
+    div.textContent = str || '';
     return div.innerHTML;
 }
 
 document.addEventListener("DOMContentLoaded", () => {
-    checkUserSession();
-    setupEventListeners();
+    setupGlobalPasswordToggles();
+
+    const path = window.location.pathname;
+    if (path === "/login" || path === "/register") {
+        setupStandaloneAuthPage(path);
+    } else {
+        checkUserSession();
+        setupMainAppEventListeners();
+    }
 });
 
-function checkUserSession() {
-    fetch("/api/me")
-        .then(res => res.json())
-        .then(data => {
-            if (data.success && data.user) {
-                renderUserHeader(data.user);
-                renderUserDashboard(data.links || []);
-                if (data.user.is_admin) {
-                    loadAdminDashboard();
-                } else {
-                    document.getElementById("adminDashboard").classList.add("hidden");
-                }
-            } else {
-                renderGuestHeader();
-                document.getElementById("userDashboard").classList.add("hidden");
-                document.getElementById("adminDashboard").classList.add("hidden");
-            }
-        })
-        .catch(() => {
-            renderGuestHeader();
-        });
-}
-
-function renderUserHeader(user) {
-    const nav = document.getElementById("authNav");
-    const adminTag = user.is_admin ? `<span class="badge" style="background:#6366f1;color:#fff;padding:2px 8px;border-radius:4px;font-size:12px;margin-left:6px;">ADMIN</span>` : "";
-    nav.innerHTML = `
-        <span class="user-welcome">Hello, <strong>${escapeHtml(user.username)}</strong>${adminTag}</span>
-        <button id="logoutBtn" class="btn secondary-btn">Logout</button>
-    `;
-    document.getElementById("logoutBtn").addEventListener("click", handleLogout);
-}
-
-
-function renderGuestHeader() {
-    const nav = document.getElementById("authNav");
-    nav.innerHTML = `
-        <button id="openAuthBtn" class="btn secondary-btn">Sign In / Register</button>
-    `;
-    document.getElementById("openAuthBtn").addEventListener("click", () => {
-        document.getElementById("authModal").classList.remove("hidden");
-    });
-}
-
-function renderUserDashboard(links) {
-    const dashboard = document.getElementById("userDashboard");
-    const tbody = document.getElementById("userLinksBody");
-    tbody.innerHTML = "";
-
-    if (links.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="4" style="text-align:center;">No links created yet.</td></tr>`;
-    } else {
-        links.forEach(link => {
-            const tr = document.createElement("tr");
-            tr.innerHTML = `
-                <td><a href="${escapeHtml(link.short_url)}" target="_blank">/r/${escapeHtml(link.short_code)}</a></td>
-                <td class="truncate">${escapeHtml(link.original_url)}</td>
-                <td>${link.created_at ? link.created_at.split("T")[0] : "-"}</td>
-                <td>
-                    <button class="btn table-btn" onclick="viewMetrics('${escapeHtml(link.short_code)}')">Stats</button>
-                    <button class="btn table-btn danger-btn" onclick="deleteLink('${escapeHtml(link.short_code)}')">Delete</button>
-                </td>
-            `;
-            tbody.appendChild(tr);
-        });
-    }
-
-    dashboard.classList.remove("hidden");
-}
-
-function setupEventListeners() {
-    const modal = document.getElementById("authModal");
-    const closeBtn = document.getElementById("closeAuthModal");
-    const loginTab = document.getElementById("loginTabBtn");
-    const regTab = document.getElementById("registerTabBtn");
-    const loginForm = document.getElementById("loginForm");
-    const regForm = document.getElementById("registerForm");
-
-    if (closeBtn) {
-        closeBtn.addEventListener("click", () => modal.classList.add("hidden"));
-    }
-
+function setupGlobalPasswordToggles() {
     document.querySelectorAll(".toggle-password-btn").forEach(btn => {
         btn.addEventListener("click", () => {
             const targetId = btn.getAttribute("data-target");
@@ -107,74 +33,62 @@ function setupEventListeners() {
             }
         });
     });
+}
 
-    loginTab.addEventListener("click", () => {
+function setupStandaloneAuthPage(path) {
+    const loginTab = document.getElementById("authPageLoginTab");
+    const regTab = document.getElementById("authPageRegisterTab");
+    const loginForm = document.getElementById("standaloneLoginForm");
+    const regForm = document.getElementById("standaloneRegisterForm");
+    const title = document.getElementById("authPageTitle");
+    const subtitle = document.getElementById("authPageSubtitle");
+
+    if (!loginTab || !regTab) return;
+
+    function showLogin() {
         loginTab.classList.add("active");
         regTab.classList.remove("active");
         loginForm.classList.remove("hidden");
         regForm.classList.add("hidden");
-    });
+        if (title) title.innerText = "Welcome Back";
+        if (subtitle) subtitle.innerText = "Sign in to manage your custom links & track analytics";
+    }
 
-
-    regTab.addEventListener("click", () => {
+    function showRegister() {
         regTab.classList.add("active");
         loginTab.classList.remove("active");
         regForm.classList.remove("hidden");
         loginForm.classList.add("hidden");
-    });
+        if (title) title.innerText = "Create Your Account";
+        if (subtitle) subtitle.innerText = "Join to generate custom aliases and view real-time metrics";
+    }
+
+    if (path === "/register") {
+        showRegister();
+    } else {
+        showLogin();
+    }
+
+    loginTab.addEventListener("click", showLogin);
+    regTab.addEventListener("click", showRegister);
 
     loginForm.addEventListener("submit", (e) => {
         e.preventDefault();
-        const username = document.getElementById("loginUsername").value;
-        const password = document.getElementById("loginPassword").value;
-        authRequest("/api/login", { username, password });
+        const username = document.getElementById("pageLoginUsername").value;
+        const password = document.getElementById("pageLoginPassword").value;
+        submitStandaloneAuth("/api/login", { username, password });
     });
 
     regForm.addEventListener("submit", (e) => {
         e.preventDefault();
-        const username = document.getElementById("regUsername").value;
-        const password = document.getElementById("regPassword").value;
-        authRequest("/api/register", { username, password });
-    });
-
-    document.getElementById("shortenForm").addEventListener("submit", (e) => {
-        e.preventDefault();
-        shortenLink();
-    });
-
-    document.getElementById("copyBtn").addEventListener("click", () => {
-        const input = document.getElementById("shortUrlOutput");
-        input.select();
-        navigator.clipboard.writeText(input.value);
-        document.getElementById("copyBtn").innerText = "Copied!";
-        setTimeout(() => {
-            document.getElementById("copyBtn").innerText = "Copy";
-        }, 2000);
-    });
-
-    document.getElementById("qrBtn").addEventListener("click", () => {
-        const container = document.getElementById("qrContainer");
-        const canvasDiv = document.getElementById("qrCanvas");
-        const url = document.getElementById("shortUrlOutput").value;
-
-        if (container.classList.contains("hidden")) {
-            canvasDiv.innerHTML = `<img src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(url)}" alt="QR Code" />`;
-            container.classList.remove("hidden");
-        } else {
-            container.classList.add("hidden");
-        }
-    });
-
-    document.getElementById("fetchAnalyticsBtn").addEventListener("click", () => {
-        const code = document.getElementById("analyticsCodeInput").value.trim();
-        if (code) {
-            viewMetrics(code);
-        }
+        const username = document.getElementById("pageRegUsername").value;
+        const password = document.getElementById("pageRegPassword").value;
+        submitStandaloneAuth("/api/register", { username, password });
     });
 }
 
-function authRequest(endpoint, payload) {
-    const alertBox = document.getElementById("authAlert");
+function submitStandaloneAuth(endpoint, payload) {
+    const alertBox = document.getElementById("pageAuthAlert");
     alertBox.classList.add("hidden");
 
     fetch(endpoint, {
@@ -185,215 +99,340 @@ function authRequest(endpoint, payload) {
     .then(res => res.json())
     .then(data => {
         if (data.success) {
-            document.getElementById("authModal").classList.add("hidden");
-            checkUserSession();
+            window.location.href = "/";
         } else {
             alertBox.innerText = data.error || "Authentication failed";
             alertBox.classList.remove("hidden");
         }
     })
     .catch(() => {
-        alertBox.innerText = "Network error";
+        alertBox.innerText = "Network error. Please try again.";
         alertBox.classList.remove("hidden");
     });
+}
+
+function checkUserSession() {
+    fetch("/api/me")
+        .then(res => res.json())
+        .then(data => {
+            if (data.success && data.user) {
+                renderUserHeader(data.user);
+                renderUserDashboard(data.links || []);
+                if (data.user.is_admin) {
+                    loadAdminDashboard();
+                } else {
+                    const adminDb = document.getElementById("adminDashboard");
+                    if (adminDb) adminDb.classList.add("hidden");
+                }
+            } else {
+                renderGuestHeader();
+                const userDb = document.getElementById("userDashboard");
+                const adminDb = document.getElementById("adminDashboard");
+                if (userDb) userDb.classList.add("hidden");
+                if (adminDb) adminDb.classList.add("hidden");
+            }
+        })
+        .catch(() => {
+            renderGuestHeader();
+        });
+}
+
+function renderUserHeader(user) {
+    const nav = document.getElementById("authNav");
+    if (!nav) return;
+    const adminTag = user.is_admin ? `<span class="badge-pill admin-pill" style="margin-left:6px;">ADMIN</span>` : "";
+    nav.innerHTML = `
+        <span class="user-welcome" style="color:#94a3b8;font-size:0.95rem;">Hello, <strong style="color:#818cf8;">${escapeHtml(user.username)}</strong>${adminTag}</span>
+        <button id="logoutBtn" class="btn secondary-btn">Logout</button>
+    `;
+    document.getElementById("logoutBtn").addEventListener("click", handleLogout);
+}
+
+function renderGuestHeader() {
+    const nav = document.getElementById("authNav");
+    if (!nav) return;
+    nav.innerHTML = `
+        <a href="/login" class="btn secondary-btn">Sign In</a>
+        <a href="/register" class="btn primary-btn">Get Started</a>
+    `;
+}
+
+function renderUserDashboard(links) {
+    const dashboard = document.getElementById("userDashboard");
+    const tbody = document.getElementById("userLinksBody");
+    if (!dashboard || !tbody) return;
+    tbody.innerHTML = "";
+
+    if (links.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="4" style="text-align:center;color:#64748b;">No links created yet.</td></tr>`;
+    } else {
+        links.forEach(link => {
+            const tr = document.createElement("tr");
+            tr.innerHTML = `
+                <td><a href="${escapeHtml(link.short_url)}" target="_blank">/r/${escapeHtml(link.short_code)}</a></td>
+                <td class="truncate" style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(link.original_url)}</td>
+                <td>${link.created_at ? link.created_at.split("T")[0] : "-"}</td>
+                <td>
+                    <button class="btn secondary-btn" style="padding:0.35rem 0.75rem;font-size:0.8rem;" onclick="viewMetrics('${escapeHtml(link.short_code)}')">Stats</button>
+                    <button class="btn danger-btn" style="padding:0.35rem 0.75rem;font-size:0.8rem;margin-left:4px;" onclick="deleteLink('${escapeHtml(link.short_code)}')">Delete</button>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    dashboard.classList.remove("hidden");
+}
+
+function setupMainAppEventListeners() {
+    const shortenForm = document.getElementById("shortenForm");
+    if (shortenForm) {
+        shortenForm.addEventListener("submit", (e) => {
+            e.preventDefault();
+            shortenLink();
+        });
+    }
+
+    const copyBtn = document.getElementById("copyBtn");
+    if (copyBtn) {
+        copyBtn.addEventListener("click", () => {
+            const input = document.getElementById("shortUrlOutput");
+            input.select();
+            navigator.clipboard.writeText(input.value);
+            copyBtn.innerText = "Copied!";
+            setTimeout(() => {
+                copyBtn.innerText = "Copy Link";
+            }, 2000);
+        });
+    }
+
+    const qrBtn = document.getElementById("qrBtn");
+    if (qrBtn) {
+        qrBtn.addEventListener("click", toggleQRCode);
+    }
+
+    const analyticsBtn = document.getElementById("fetchAnalyticsBtn");
+    if (analyticsBtn) {
+        analyticsBtn.addEventListener("click", () => {
+            const code = document.getElementById("analyticsCodeInput").value.trim();
+            if (code) viewMetrics(code);
+        });
+    }
 }
 
 function handleLogout() {
     fetch("/api/logout", { method: "POST" })
-        .then(() => checkUserSession());
+        .then(() => {
+            window.location.reload();
+        });
 }
 
 function shortenLink() {
+    const original_url = document.getElementById("originalUrl").value.trim();
+    const custom_alias = document.getElementById("customAlias").value.trim();
+    const expiration_days = document.getElementById("expirationDays").value;
     const alertBox = document.getElementById("formAlert");
-    alertBox.classList.add("hidden");
 
-    const payload = {
-        original_url: document.getElementById("originalUrl").value.trim(),
-        custom_alias: document.getElementById("customAlias").value.trim(),
-        expiration_days: document.getElementById("expirationDays").value
-    };
+    alertBox.classList.add("hidden");
 
     fetch("/api/shorten", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
+        body: JSON.stringify({ original_url, custom_alias, expiration_days })
     })
     .then(res => res.json())
     .then(data => {
         if (data.success) {
-            document.getElementById("resultCard").classList.remove("hidden");
             document.getElementById("shortUrlOutput").value = data.link.short_url;
-            document.getElementById("qrContainer").classList.add("hidden");
+            document.getElementById("resultCard").classList.remove("hidden");
             checkUserSession();
         } else {
-            alertBox.innerText = data.error || "Failed to shorten URL";
+            alertBox.innerText = data.error || "Failed to create short link";
             alertBox.classList.remove("hidden");
         }
     })
     .catch(() => {
-        alertBox.innerText = "Error contacting server";
+        alertBox.innerText = "Network error. Failed to create short link.";
         alertBox.classList.remove("hidden");
     });
 }
 
-function viewMetrics(code) {
-    fetch(`/api/links/${code}/analytics`)
+function toggleQRCode() {
+    const container = document.getElementById("qrContainer");
+    const canvasDiv = document.getElementById("qrCanvas");
+    const shortUrl = document.getElementById("shortUrlOutput").value;
+
+    if (container.classList.contains("hidden")) {
+        canvasDiv.innerHTML = `<img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(shortUrl)}" alt="QR Code">`;
+        container.classList.remove("hidden");
+    } else {
+        container.classList.add("hidden");
+    }
+}
+
+function viewMetrics(shortCode) {
+    fetch(`/api/links/${encodeURIComponent(shortCode)}/analytics`)
         .then(res => res.json())
         .then(data => {
-            if (!data.success) {
-                alert(data.error || "Could not fetch metrics");
-                return;
+            if (data.success) {
+                renderAnalytics(data.analytics, data.summary);
+            } else {
+                alert(data.error || "Analytics unavailable");
             }
-
-            const dashboard = document.getElementById("analyticsDashboard");
-            dashboard.classList.remove("hidden");
-
-            document.getElementById("metricTotalClicks").innerText = data.analytics.total_clicks;
-            document.getElementById("metricShortCode").innerText = data.summary.short_code;
-            document.getElementById("metricStatus").innerText = data.summary.is_active ? "Active" : "Expired";
-
-            renderTimelineChart(data.analytics.timeline);
-            renderReferrerChart(data.analytics.referrers);
-
-            dashboard.scrollIntoView({ behavior: "smooth" });
-        })
-        .catch(() => {
-            alert("Error fetching analytics data");
         });
 }
 
-function deleteLink(code) {
-    if (!confirm(`Are you sure you want to delete /r/${code}?`)) return;
+function renderAnalytics(analytics, summary) {
+    document.getElementById("metricTotalClicks").innerText = analytics.total_clicks || 0;
+    document.getElementById("metricShortCode").innerText = summary.short_code;
+    
+    const statusEl = document.getElementById("metricStatus");
+    if (summary.is_active) {
+        statusEl.innerText = "Active";
+        statusEl.className = "metric-value text-success";
+    } else {
+        statusEl.innerText = "Expired / Deactivated";
+        statusEl.className = "metric-value text-muted";
+    }
 
-    fetch(`/api/links/${code}`, { method: "DELETE" })
+    renderCharts(analytics);
+    document.getElementById("analyticsDashboard").classList.remove("hidden");
+    document.getElementById("analyticsDashboard").scrollIntoView({ behavior: "smooth" });
+}
+
+function renderCharts(analytics) {
+    const timelineCtx = document.getElementById("timelineChart").getContext("2d");
+    const referrerCtx = document.getElementById("referrerChart").getContext("2d");
+
+    if (timelineChartInstance) timelineChartInstance.destroy();
+    if (referrerChartInstance) referrerChartInstance.destroy();
+
+    const timelineData = analytics.timeline || [];
+    timelineChartInstance = new Chart(timelineCtx, {
+        type: 'line',
+        data: {
+            labels: timelineData.map(d => d.date),
+            datasets: [{
+                label: 'Clicks',
+                data: timelineData.map(d => d.clicks),
+                borderColor: '#6366f1',
+                backgroundColor: 'rgba(99, 102, 241, 0.15)',
+                fill: true,
+                tension: 0.35
+            }]
+        },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+    });
+
+    const referrerData = analytics.referrers || [];
+    referrerChartInstance = new Chart(referrerCtx, {
+        type: 'doughnut',
+        data: {
+            labels: referrerData.map(d => d.referrer),
+            datasets: [{
+                data: referrerData.map(d => d.count),
+                backgroundColor: ['#6366f1', '#a855f7', '#10b981', '#f59e0b', '#ef4444']
+            }]
+        },
+        options: { responsive: true, maintainAspectRatio: false }
+    });
+}
+
+function deleteLink(shortCode) {
+    if (!confirm(`Are you sure you want to delete /r/${shortCode}?`)) return;
+    fetch(`/api/links/${encodeURIComponent(shortCode)}`, { method: "DELETE" })
         .then(res => res.json())
         .then(data => {
             if (data.success) {
                 checkUserSession();
-                document.getElementById("analyticsDashboard").classList.add("hidden");
             } else {
                 alert(data.error || "Failed to delete link");
             }
         });
 }
 
-function renderTimelineChart(timeline) {
-    const ctx = document.getElementById("timelineChart").getContext("2d");
-    if (timelineChartInstance) timelineChartInstance.destroy();
-
-    const labels = timeline.map(t => t.date);
-    const clicks = timeline.map(t => t.clicks);
-
-    timelineChartInstance = new Chart(ctx, {
-        type: "line",
-        data: {
-            labels: labels,
-            datasets: [{
-                label: "Clicks",
-                data: clicks,
-                borderColor: "#6366f1",
-                backgroundColor: "rgba(99, 102, 241, 0.1)",
-                fill: true,
-                tension: 0.3
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false
-        }
-    });
-}
-
-function renderReferrerChart(referrers) {
-    const ctx = document.getElementById("referrerChart").getContext("2d");
-    if (referrerChartInstance) referrerChartInstance.destroy();
-
-    const labels = Object.keys(referrers);
-    const data = Object.values(referrers);
-
-    referrerChartInstance = new Chart(ctx, {
-        type: "doughnut",
-        data: {
-            labels: labels,
-            datasets: [{
-                data: data,
-                backgroundColor: ["#6366f1", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6"]
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false
-        }
-    });
-}
-
-window.viewMetrics = viewMetrics;
-window.deleteLink = deleteLink;
-
 function loadAdminDashboard() {
-    fetch("/api/admin/stats").then(res => res.json()).then(data => {
-        if (data.success) {
-            document.getElementById("adminTotalUsers").innerText = data.stats.total_users;
-            document.getElementById("adminActiveLinks").innerText = data.stats.active_links;
-            document.getElementById("adminTotalClicks").innerText = data.stats.total_clicks;
-        }
-    });
+    fetch("/api/admin/stats")
+        .then(res => res.json())
+        .then(data => {
+            if (data.success && data.stats) {
+                document.getElementById("adminTotalUsers").innerText = data.stats.total_users;
+                document.getElementById("adminActiveLinks").innerText = data.stats.active_links;
+                document.getElementById("adminTotalClicks").innerText = data.stats.total_clicks;
+            }
+        });
 
-    fetch("/api/admin/users").then(res => res.json()).then(data => {
-        if (data.success) {
-            const ubody = document.getElementById("adminUsersBody");
-            ubody.innerHTML = "";
-            data.users.forEach(u => {
-                const tr = document.createElement("tr");
-                tr.innerHTML = `
-                    <td>${u.id}</td>
-                    <td><strong>${escapeHtml(u.username)}</strong></td>
-                    <td>${u.is_admin ? "Admin" : "User"}</td>
-                    <td>${u.link_count}</td>
-                    <td>${u.is_admin ? "-" : `<button class="btn table-btn danger-btn" onclick="adminDeleteUser(${u.id})">Delete User</button>`}</td>
-                `;
-                ubody.appendChild(tr);
-            });
-        }
-    });
+    fetch("/api/admin/users")
+        .then(res => res.json())
+        .then(data => {
+            if (data.success && data.users) {
+                const tbody = document.getElementById("adminUsersBody");
+                tbody.innerHTML = "";
+                data.users.forEach(u => {
+                    const tr = document.createElement("tr");
+                    const roleBadge = u.is_admin ? '<span class="badge-pill admin-pill">Admin</span>' : '<span class="badge-pill">User</span>';
+                    tr.innerHTML = `
+                        <td>#${u.id}</td>
+                        <td><strong>${escapeHtml(u.username)}</strong></td>
+                        <td>${roleBadge}</td>
+                        <td>${u.link_count}</td>
+                        <td>
+                            ${u.is_admin ? '<span style="color:#64748b;font-size:0.8rem;">Protected</span>' : `<button class="btn danger-btn" style="padding:0.3rem 0.6rem;font-size:0.8rem;" onclick="adminDeleteUser(${u.id})">Ban Account</button>`}
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            }
+        });
 
-    fetch("/api/admin/links").then(res => res.json()).then(data => {
-        if (data.success) {
-            const lbody = document.getElementById("adminLinksBody");
-            lbody.innerHTML = "";
-            data.links.forEach(l => {
-                const tr = document.createElement("tr");
-                tr.innerHTML = `
-                    <td>/r/${escapeHtml(l.short_code)}</td>
-                    <td class="truncate">${escapeHtml(l.original_url)}</td>
-                    <td>${l.user_id || "Anon"}</td>
-                    <td>${l.is_active ? "Active" : "Inactive"}</td>
-                    <td>${l.is_active ? `<button class="btn table-btn danger-btn" onclick="adminDeleteLink('${escapeHtml(l.short_code)}')">Delete Link</button>` : "-"}</td>
-                `;
-                lbody.appendChild(tr);
-            });
-        }
-    });
+    fetch("/api/admin/links")
+        .then(res => res.json())
+        .then(data => {
+            if (data.success && data.links) {
+                const tbody = document.getElementById("adminLinksBody");
+                tbody.innerHTML = "";
+                data.links.forEach(l => {
+                    const tr = document.createElement("tr");
+                    const statusText = l.is_active ? '<span class="text-success">Active</span>' : '<span class="text-muted">Inactive</span>';
+                    tr.innerHTML = `
+                        <td><a href="${escapeHtml(l.short_url)}" target="_blank">/r/${escapeHtml(l.short_code)}</a></td>
+                        <td class="truncate" style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(l.original_url)}</td>
+                        <td>${l.user_id ? `#${l.user_id}` : 'Guest'}</td>
+                        <td>${statusText}</td>
+                        <td>
+                            ${l.is_active ? `<button class="btn danger-btn" style="padding:0.3rem 0.6rem;font-size:0.8rem;" onclick="adminDeleteLink('${escapeHtml(l.short_code)}')">Force Remove</button>` : '<span style="color:#64748b;font-size:0.8rem;">Removed</span>'}
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            }
+        });
 
     document.getElementById("adminDashboard").classList.remove("hidden");
 }
 
 function adminDeleteUser(userId) {
-    if (!confirm("Are you sure you want to delete this user and all their links?")) return;
-    fetch(`/api/admin/users/${userId}`, { method: "DELETE" }).then(res => res.json()).then(data => {
-        if (data.success) loadAdminDashboard();
-        else alert(data.error || "Failed to delete user");
-    });
+    if (!confirm(`Ban and delete user #${userId}?`)) return;
+    fetch(`/api/admin/users/${userId}`, { method: "DELETE" })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                loadAdminDashboard();
+            } else {
+                alert(data.error || "Failed to delete user");
+            }
+        });
 }
 
-function adminDeleteLink(code) {
-    if (!confirm(`Are you sure you want to force-delete link /r/${code}?`)) return;
-    fetch(`/api/admin/links/${code}`, { method: "DELETE" }).then(res => res.json()).then(data => {
-        if (data.success) loadAdminDashboard();
-        else alert(data.error || "Failed to delete link");
-    });
+function adminDeleteLink(shortCode) {
+    if (!confirm(`Force-delete link /r/${shortCode}?`)) return;
+    fetch(`/api/admin/links/${encodeURIComponent(shortCode)}`, { method: "DELETE" })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                loadAdminDashboard();
+            } else {
+                alert(data.error || "Failed to remove link");
+            }
+        });
 }
-
-window.adminDeleteUser = adminDeleteUser;
-window.adminDeleteLink = adminDeleteLink;
-
