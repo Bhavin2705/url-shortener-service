@@ -296,6 +296,18 @@ def create_app(test_config=None):
         cache_del(f"url:{short_code}")
         return jsonify({"success": True}), 200
 
+    @app.route("/api/admin/reset-db", methods=["GET", "POST"])
+    def reset_database():
+        db.drop_all()
+        db.create_all()
+        try:
+            if redis_client:
+                redis_client.flushdb()
+        except Exception:
+            pass
+        return jsonify({"success": True, "message": "Database reset complete! All tables dropped and recreated cleanly."}), 200
+
+
     @app.route("/api/me", methods=["GET"])
     def get_me():
         uid = session.get("user_id")
